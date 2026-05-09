@@ -1,36 +1,76 @@
-name: GitHub Action Name
-description: A GitHub Action Descriptionto Open a specified GitHub issue using the GitHub API
+name: Create Major Version Tag
+description: A GitHub Action to create a new major version tag (i.e. v1, v2) for a GitHub Action repository
 author: Lee Lott
 
 inputs:
-  input-1:
-    description: 'Description of input'
+  version-tag:
+    description: 'The tag on which the new major version tag will be based'
     required: true
-  input-2:
-    description: 'Description of input'
+  branch-name:
+    description: 'Branch name on which to create the tag (e.g., main)'
     required: true
-  input-3:
-    description: 'Description of input'
+  commit-sha:
+    description: 'Optionally specify a commit SHA to tag instead of the head of the branch.'
+    required: false
+    default: ''    
+  org-name:
+    description: 'The name of the GitHub organization'
     required: true
-
-outputs:
-  result:
-    description: 'Result of the action ("success" or "failure")'
-    value: ${{ steps.action.outputs.result }}
-  error-message:
-    description: 'Error message if the action fails'
-    value: ${{ steps.action.outputs.error-message }}
+  repo-name:
+    description: 'The name of the repository'
+    required: true    
+  token:
+    description: 'GitHub token with access to Git tags'
+    required: true
 
 runs:
-  using: composite
+  using: "composite"
   steps:
-    - name: Action Name
-      id: action
+    - name: Get Major Version Tag
+      id: get-major-version-tag
       shell: pwsh
-      run: |        
-        . "${{ github.action_path }}/action.ps1"
-        run_action `
-          -Input1 "${{ inputs.input-1 }}" `
-          -Input2 "${{ inputs.input-2 }}" `
-          -Inpute3 "${{ inputs.input-3 }}" `
-      
+      run: |
+        $versionTag = "${{ inputs.version-tag }}"
+          
+        if ($versionTag -match '^v([0-9]+)\.[0-9]+\.[0-9]+(?:-.+)?$') {
+          $majorVersionTag = "v$($Matches[1])"
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "major_version_tag=$majorVersionTag"
+        } else {
+          Write-Error "Invalid version tag format: $versionTag"
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "major_version_tag="
+        }
+
+    - name: Delete Existing Major Version Tag
+      id: delete-major-version-tag
+      uses: lee-lott-actions/delete-git-tag@v1
+      with:
+        repo-name: ${{ inputs.repo-name }}
+        org-name: ${{ inputs.org-name }}
+        tag-name: ${{ steps.get-major-version-tag.outputs.major_version_tag }}
+        token: ${{ inputs.token }}
+
+    - name: Create New Major Version Tag
+      id: create-major-version-tag
+      if: steps.delete-major-version-tag.outputs.result != 'failure'
+      uses: lee-lott-actions/create-git-tag@v1
+      with:
+        branch-name: ${{ inputs.branch-name }}
+        tag-name: ${{ steps.get-major-version-tag.outputs.major_version_tag }}
+        tag-message: 'Tag created for Release ${{ inputs.version-tag }}.'
+        commit-sha: ${{ inputs.commit-sha }}
+        org-name: ${{ inputs.org-name }}
+        repo-name: ${{ inputs.repo-name }}
+        token: ${{ inputs.token }}
+
+    - name: Add to Job Summary
+      run: |
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "# GitHub Action Deployment Summary"
+        switch ("${{ steps.create-major-version-tag.outputs.result }}") {
+          "success" {
+            Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "Created Major Version Tag **${{ steps.get-major-version-tag.outputs.major_version_tag }}** for Release [${{ inputs.version-tag }}](https://github.com/${{ inputs.org-name }}/${{ inputs.repo-name }}/releases/tag/${{ inputs.version-tag }})."
+          }
+          Default {
+            Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "Failed to deploy GitHub Action.  See log for further details."
+          }
+        }
+      shell: pwsh          
