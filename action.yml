@@ -10,9 +10,12 @@ inputs:
     description: 'Branch name on which to create the tag (e.g., main)'
     required: true
   commit-sha:
-    description: 'Optionally specify a commit SHA to tag instead of the head of the branch.'
+    description: 'Optionally specify a commit SHA to tag instead of the head of the branch'
     required: false
-    default: ''    
+    default: ''
+  deployment-environment:
+    description: 'The name of the environment for the GitHub deployment'
+    required: true
   org-name:
     description: 'The name of the GitHub organization'
     required: true
@@ -26,6 +29,28 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: Create Deployment
+      id: create-deployment
+      uses: lee-lott-actions/create-deployment@v1
+      with:
+        ref: ${{ inputs.version-tag }}
+        environment: ${{ inputs.deployment-environment }}
+        description: 'Queuing deployment.'
+        org-name: ${{ inputs.org-name }}
+        repo-name: ${{ inputs.repo-name }}
+        token: ${{ inputs.token }}
+
+    - name: Update Deployment
+      id: update-deployment-in-progress
+      uses: lee-lott-actions/update-deployment@v1
+      with:
+        deployment-id: ${{ steps.create-deployment.outputs.deployment-id }}
+        state: 'in_progress'
+        description: 'Beginnging deployment...'
+        org-name: ${{ inputs.org-name }}
+        repo-name: ${{ inputs.repo-name }}
+        token: ${{ inputs.token }}
+          
     - name: Get Major Version Tag
       id: get-major-version-tag
       shell: pwsh
@@ -61,6 +86,17 @@ runs:
         org-name: ${{ inputs.org-name }}
         repo-name: ${{ inputs.repo-name }}
         token: ${{ inputs.token }}
+
+    - name: Update Deployment
+      id: update-deployment-success
+      uses: lee-lott-actions/update-deployment@v1
+      with:
+        deployment-id: ${{ steps.create-deployment.outputs.deployment-id }}
+        state: ${{ steps.create-major-version-tag.outputs.result == 'success' && 'success' || 'failure' }}
+        description: ${{ steps.create-major-version-tag.outpus.result == 'success' && 'Deployment Successful' || 'Deployment Failed' }}
+        org-name: ${{ inputs.org-name }}
+        repo-name: ${{ inputs.repo-name }}
+        token: ${{ inputs.token }}     
 
     - name: Add to Job Summary
       run: |
