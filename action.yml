@@ -88,7 +88,7 @@ runs:
         token: ${{ inputs.token }}
 
     - name: Update Deployment
-      id: update-deployment-success
+      id: update-deployment-success-or-failure
       uses: lee-lott-actions/update-deployment@v1
       with:
         deployment-id: ${{ steps.create-deployment.outputs.deployment-id }}
