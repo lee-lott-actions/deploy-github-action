@@ -21,6 +21,7 @@ This GitHub Action creates (or updates) a major version tag (such as `v1`, `v2`,
 | `version-tag`  | The tag to derive the new major version tag from (e.g., `v1.2.3`).        | Yes      |
 | `branch-name`  | The branch name on which to create the tag (e.g., `main`).                | Yes      |
 | `commit-sha`   | Optionally specify the commit SHA to tag instead of the branch head.      | No       |
+| `deployment-environment` | The name of the environment for the GitHub deployment           | Yes      |
 | `org-name`     | The name of the GitHub organization.                                      | Yes      |
 | `repo-name`    | The name of the repository.                                               | Yes      |
 | `token`        | GitHub token with access to Git tags.                                     | Yes      |
@@ -49,6 +50,7 @@ jobs:
         with:
           version-tag: 'v1.2.3'
           branch-name: 'main'
+          deployment-environment: 'Production'
           org-name: 'your-org'
           repo-name: 'your-repo'
           token: ${{ secrets.GITHUB_TOKEN }}
