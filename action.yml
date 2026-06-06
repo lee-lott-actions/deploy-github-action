@@ -31,7 +31,7 @@ runs:
   steps:
     - name: Create Deployment
       id: create-deployment
-      uses: lee-lott-actions/create-deployment@v1
+      uses: lee-lott-actions/create-github-deployment@v1
       with:
         ref: ${{ inputs.version-tag }}
         environment: ${{ inputs.deployment-environment }}
@@ -42,7 +42,7 @@ runs:
 
     - name: Update Deployment
       id: update-deployment-in-progress
-      uses: lee-lott-actions/update-deployment@v1
+      uses: lee-lott-actions/update-github-deployment@v1
       with:
         deployment-id: ${{ steps.create-deployment.outputs.deployment-id }}
         state: 'in_progress'
@@ -89,7 +89,7 @@ runs:
 
     - name: Update Deployment
       id: update-deployment-success-or-failure
-      uses: lee-lott-actions/update-deployment@v1
+      uses: lee-lott-actions/update-github-deployment@v1
       with:
         deployment-id: ${{ steps.create-deployment.outputs.deployment-id }}
         state: ${{ steps.create-major-version-tag.outputs.result == 'success' && 'success' || 'failure' }}
